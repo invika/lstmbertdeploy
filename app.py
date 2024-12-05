@@ -1,25 +1,22 @@
 from flask import Flask, render_template, request
-import pandas as pd
-import tensorflow as tf
-from tensorflow.keras.preprocessing.sequence import pad_sequences
 import re
 import string
-from nltk.corpus import stopwords
-from nltk.stem import WordNetLemmatizer
-import nltk
-nltk.data.path.append('./nltk.txt')
 import torch
 from transformers import DistilBertTokenizer, DistilBertForSequenceClassification
+import nltk
 
-# Download necessary NLTK data
-nltk.download('wordnet')
-nltk.download('omw-1.4')
-nltk.download('stopwords')
-nltk.download('punkt')
+# Configure NLTK data directory
+nltk.data.path.append('./nltk_data')
+
+# Ensure necessary NLTK data is available
+nltk.download('wordnet', download_dir='./nltk_data')
+nltk.download('omw-1.4', download_dir='./nltk_data')
+nltk.download('stopwords', download_dir='./nltk_data')
+nltk.download('punkt', download_dir='./nltk_data')
 
 app = Flask(__name__)
 
-# Helper functions
+# Helper function to preprocess text
 def preprocess_text(input_text):
     """Clean and preprocess the input text."""
     cleaned_text = str(input_text).lower()
@@ -34,11 +31,13 @@ def preprocess_text(input_text):
 def predict_with_distilbert(sentence):
     """Make predictions using the DistilBERT model."""
     try:
+        # Preprocess the input sentence
         sentence = preprocess_text(sentence)
         inputs = tokenizer_bert(sentence, return_tensors="pt", padding=True, truncation=True, max_length=128)
         with torch.no_grad():
             outputs = model_bert(**inputs)
             logits = outputs.logits
+        # Predict class and confidence
         predicted_class = torch.argmax(logits, dim=1).item()
         probability = torch.softmax(logits, dim=1)[0][predicted_class].item()
         return "REAL" if predicted_class == 1 else "FAKE", probability
@@ -46,7 +45,7 @@ def predict_with_distilbert(sentence):
         print(f"Error in DistilBERT prediction: {e}")
         return "Error", 0.0
 
-# Load DistilBERT models
+# Load DistilBERT model and tokenizer
 try:
     model_bert = DistilBertForSequenceClassification.from_pretrained('distilbert-base-uncased', num_labels=2)
     model_bert.load_state_dict(torch.load('distilbert_finetuned_model.pth', map_location=torch.device('cpu')))
@@ -59,17 +58,14 @@ except Exception as e:
 @app.route('/', methods=['GET', 'POST'])
 def predict():
     """Handle prediction requests."""
-    prediction_text = None
     prediction_label = None
     probability = None
     text = ""  # Initialize text to avoid reference errors
 
     if request.method == 'POST':
         text = request.form.get('text', '')  # Safely get 'text' input
-        model_type = request.form.get('model_type', '')
-
         try:
-            if model_type == "bert" and model_bert:
+            if model_bert:
                 prediction_label, probability = predict_with_distilbert(text)
             else:
                 prediction_label = "Error"
@@ -79,13 +75,11 @@ def predict():
             prediction_label = "Error"
             probability = 0.0
 
-        probability = f"{probability:.2f}" if probability is not None else "N/A"
-
     return render_template(
         'index.html',
         prediction_text=text,
         prediction_label=prediction_label,
-        prediction_probability=probability
+        prediction_probability=f"{probability:.2f}" if probability else "N/A"
     )
 
 if __name__ == '__main__':
