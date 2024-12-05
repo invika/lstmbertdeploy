@@ -7,6 +7,7 @@ import string
 from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
 import nltk
+nltk.data.path.append('./nltk.txt')
 import torch
 from transformers import DistilBertTokenizer, DistilBertForSequenceClassification
 
