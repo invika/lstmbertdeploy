@@ -1,18 +1,23 @@
 from flask import Flask, render_template, request
 import re
 import string
+import os
 import torch
 from transformers import DistilBertTokenizer, DistilBertForSequenceClassification
 import nltk
 
 # Configure NLTK data directory
-nltk.data.path.append('./nltk_data')
+nltk_data_path = os.path.join(os.getcwd(), "nltk_data")
+if not os.path.exists(nltk_data_path):
+    os.makedirs(nltk_data_path)
+
+nltk.data.path.append(nltk_data_path)
 
 # Ensure necessary NLTK data is available
-nltk.download('wordnet', download_dir='./nltk_data')
-nltk.download('omw-1.4', download_dir='./nltk_data')
-nltk.download('stopwords', download_dir='./nltk_data')
-nltk.download('punkt', download_dir='./nltk_data')
+nltk.download('wordnet', download_dir=nltk_data_path)
+nltk.download('omw-1.4', download_dir=nltk_data_path)
+nltk.download('stopwords', download_dir=nltk_data_path)
+nltk.download('punkt', download_dir=nltk_data_path)
 
 app = Flask(__name__)
 
